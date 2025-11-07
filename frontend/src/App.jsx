@@ -1,33 +1,34 @@
-import { useEffect, useState } from "react";
-import { supabase } from "./lib/supabase";
+import { Toaster } from "./components/ui/Sonner";
+import { TooltipProvider } from "./components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+
+import Index from "./pages/Index";
+import Login from "./pages/Login";
+import UserDashboard from "./pages/UserDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
+import DeliveryDashboard from "./pages/DeliveryDashboard";
+import NotFound from "./pages/NotFound";
+
+const queryClient = new QueryClient();
 
 function App() {
-  const [user, setUser] = useState(null);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data?.user ?? null));
-  }, []);
-
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-gray-100 text-2xl font-semibold">
-      <h1 className="mb-4 text-4xl text-green-600">🍎 FitFood</h1>
-
-      {user ? (
-        <>
-          <p>Welcome, {user.email}</p>
-          <button
-            className="mt-4 bg-red-500 text-white px-3 py-2 rounded"
-            onClick={() => supabase.auth.signOut().then(() => setUser(null))}
-          >
-            Logout
-          </button>
-        </>
-      ) : (
-        <a href="/auth" className="text-blue-500 underline">
-          Login here
-        </a>
-      )}
-    </div>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <BrowserRouter>
+          <Routes>
+            <Route path='/' element={<Index />} />
+            <Route path='/login' element={<Login />} />
+            <Route path='/dashboard' element={<UserDashboard />} />
+            <Route path='/admin' element={<AdminDashboard />} />
+            <Route path='/delivery' element={<DeliveryDashboard />} />
+            <Route path='*' element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
   );
 }
 
