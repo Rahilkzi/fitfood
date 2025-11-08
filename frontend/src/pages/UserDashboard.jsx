@@ -470,7 +470,7 @@ export default function UserDashboard() {
                                   ₹{plan.price}
                                 </div>
                                 <div className="text-sm text-gray-700 mb-3">
-                                  Deliveries per week: <b>{plan.deliveriesPerWeek}</b>
+                                  Deliveries per week: <b>{plan.deliveries_per_week}</b>
                                 </div>
                                 <ul className="space-y-1 text-sm text-gray-600">
                                   {plan.features.map((feature, index) => (
