@@ -1,36 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-// ✅ Adjusted imports — no TypeScript, no path aliases
-import Button from "../components/ui/Button";
-import Card from "../components/ui/Card";
-import CardContent from "../components/ui/CardContent";
-// import CardDescription from "../components/ui/CardDescription";
-// import CardHeader from "../components/ui/CardHeader";
-// import CardTitle from "../components/ui/CardTitle";
-import Badge from "../components/ui/Badge";
-import Tabs from "../components/ui/Tabs";
-// import TabsContent from "../components/ui/TabsContent";
-// import TabsList from "../components/ui/TabsList";
-// import TabsTrigger from "../components/ui/TabsTrigger";
-import Table from "../components/ui/Table";
-// import TableBody from "../components/ui/TableBody";
-// import TableCell from "../components/ui/TableCell";
-// import TableHead from "../components/ui/TableHead";
-// import TableHeader from "../components/ui/TableHeader";
-// import TableRow from "../components/ui/TableRow";
-
-// ✅ Fake store functions (replace with static JS later)
-import {
-  getCurrentUser,
-  logout,
-  getUsers,
-  getSubscriptions,
-  getDeliveries,
-  getAnalytics,
-  updateSubscriptionStatus,
-} from "../lib/store";
-
+import { supabase } from "@/lib/supabase";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Apple,
   Users,
@@ -41,159 +16,244 @@ import {
   CheckCircle,
   XCircle,
   Pause,
+  Loader,
 } from "lucide-react";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(getCurrentUser());
-  const [analytics, setAnalytics] = useState(getAnalytics());
-  const [users, setUsers] = useState(
-    getUsers().filter((u) => u.role === "user")
-  );
-  const [subscriptions, setSubscriptions] = useState(getSubscriptions());
-  const [deliveries, setDeliveries] = useState(getDeliveries());
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState([]);
+  const [subscriptions, setSubscriptions] = useState([]);
+  const [deliveries, setDeliveries] = useState([]);
+  const [analytics, setAnalytics] = useState({
+    totalUsers: 0,
+    activeSubscriptions: 0,
+    totalRevenue: 0,
+    completedDeliveries: 0,
+    cityStats: [],
+  });
 
+
+
+  // 🟢 Check admin session
   useEffect(() => {
-    if (!user || user.role !== "admin") {
-      navigate("/login");
-      return;
+    let mounted = true;
+
+    const checkSession = async () => {
+      setLoading(true);
+
+      // 1️⃣ Get current session safely
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
+
+      if (error) {
+        console.error("Error fetching session:", error);
+        if (mounted) navigate("/login", { replace: true });
+        return;
+      }
+
+      // 2️⃣ No session = go to login
+      if (!session) {
+        if (mounted) {
+          setLoading(false);
+          navigate("/login", { replace: true });
+        }
+        return;
+      }
+
+      // 3️⃣ Validate admin role
+      const role = session.user?.user_metadata?.role;
+      if (role !== "admin") {
+        if (mounted) navigate("/dashboard", { replace: true });
+        return;
+      }
+
+      // 4️⃣ Session and admin OK
+      if (mounted) {
+        setUser(session.user);
+        await loadData();
+        setLoading(false);
+      }
+    };
+
+    checkSession();
+
+    // 5️⃣ Watch auth changes — no flicker on refresh
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        navigate("/login", { replace: true });
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [navigate]);
+
+
+
+  // 🧠 Helper: Fetch subscription plans
+  const [plans, setPlans] = useState([]); 
+  
+  // 🧩 Load data from Supabase
+  const loadData = async () => {
+    try {
+      const [{ data: userData }, { data: subData }, { data: delData }, { data: planData }] = await Promise.all([
+        supabase.from("users").select("*"),
+        supabase.from("subscriptions").select("*"),
+        supabase.from("deliveries").select("*"),
+        supabase.from("plans").select("*"), // 👈 load plans too
+      ]);
+
+
+      setUsers(userData || []);
+      setSubscriptions(subData || []);
+      setDeliveries(delData || []);
+      setPlans(planData || []);
+
+      // Analytics summary
+      const totalUsers = (userData || []).length;
+      const activeSubs = (subData || []).filter((s) => s.status === "active").length;
+      const totalRevenue = (subData || [])
+        .filter((s) => s.status === "active")
+        .reduce((sum, s) => sum + (s.price || 0), 0);
+      const completedDeliveries = (delData || []).filter((d) => d.status === "delivered").length;
+
+      const cities = [...new Set((userData || []).map((u) => u.city).filter(Boolean))];
+      const cityStats = cities.map((city) => ({
+        city,
+        users: userData.filter((u) => u.city === city).length,
+        subscriptions: subData.filter((s) => {
+          const user = userData.find((u) => u.id === s.user_id);
+          return user?.city === city && s.status === "active";
+        }).length,
+      }));
+
+      setAnalytics({
+        totalUsers,
+        activeSubscriptions: activeSubs,
+        totalRevenue,
+        completedDeliveries,
+        cityStats,
+      });
+    } catch (err) {
+      console.error("Error loading admin data:", err);
+    } finally {
+      setLoading(false);
     }
-    loadData();
-  }, [user, navigate]);
-
-  const loadData = () => {
-    setAnalytics(getAnalytics());
-    setUsers(getUsers().filter((u) => u.role === "user"));
-    setSubscriptions(getSubscriptions());
-    setDeliveries(getDeliveries());
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate("/");
+  // 🧭 Logout
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/login", { replace: true });
   };
 
-  const handleSubscriptionAction = (id, action) => {
-    updateSubscriptionStatus(id, action);
-    loadData();
-  };
+  // ⚙️ Update subscription status
+const handleSubscriptionAction = async (id, status, userId) => {
+  const { error: subError } = await supabase
+    .from("subscriptions")
+    .update({ status })
+    .eq("id", id);
 
+  if (subError) {
+    alert("Failed to update subscription");
+    return;
+  }
+
+  // If cancelled, delete future deliveries
+  if (status === "cancelled") {
+    const today = new Date().toISOString().split("T")[0];
+    const { error: delError } = await supabase
+      .from("deliveries")
+      .delete()
+      .eq("subscription_id", id)
+      .gte("delivery_date", today);
+
+    if (delError) console.error("Failed to delete deliveries:", delError);
+  }
+
+  loadData();
+};
+
+  // 🎨 Badge helper
   const getStatusBadge = (status) => {
     const variants = {
       active: { variant: "default", icon: CheckCircle },
       paused: { variant: "secondary", icon: Pause },
       cancelled: { variant: "destructive", icon: XCircle },
-      pending: { variant: "outline", icon: CheckCircle },
-      "in-transit": { variant: "default", icon: CheckCircle },
       delivered: { variant: "default", icon: CheckCircle },
-      failed: { variant: "destructive", icon: XCircle },
+      pending: { variant: "outline", icon: Loader },
     };
     const config = variants[status] || variants.pending;
     const Icon = config.icon;
     return (
-      <Badge variant={config.variant} className='capitalize'>
-        <Icon className='h-3 w-3 mr-1' />
+      <Badge variant={config.variant} className="capitalize">
+        <Icon className="h-3 w-3 mr-1" />
         {status}
       </Badge>
     );
   };
 
-  if (!user) return null;
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen text-green-700">
+        <Loader className="h-8 w-8 animate-spin mr-2" /> Loading admin dashboard...
+      </div>
+    );
+  }
 
   return (
-    <div className='min-h-screen bg-gradient-to-br from-green-50 to-emerald-50'>
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
       {/* Header */}
-      <header className='border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50'>
-        <div className='container mx-auto px-4 py-4 flex items-center justify-between'>
-          <div className='flex items-center gap-2'>
-            <Apple className='h-8 w-8 text-green-600' />
-            <span className='text-2xl font-bold text-green-600'>
-              FitFood Admin
-            </span>
+      <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Apple className="h-8 w-8 text-green-600" />
+            <span className="text-2xl font-bold text-green-600">FitFood Admin</span>
           </div>
-          <div className='flex items-center gap-4'>
-            <span className='text-gray-700'>Admin: {user.name}</span>
-            <Button variant='outline' size='sm' onClick={handleLogout}>
-              <LogOut className='h-4 w-4 mr-2' />
+          <div className="flex items-center gap-4">
+            <span className="text-gray-700">
+              {user?.email?.split("@")[0]} (Admin)
+            </span>
+            <Button variant="outline" size="sm" onClick={handleLogout}>
+              <LogOut className="h-4 w-4 mr-2" />
               Logout
             </Button>
           </div>
         </div>
       </header>
 
-      <div className='container mx-auto px-4 py-8'>
+      <div className="container mx-auto px-4 py-8 space-y-8">
         {/* Stats */}
-        <div className='grid md:grid-cols-4 gap-6 mb-8'>
-          <Card>
-            <CardHeader className='flex flex-row items-center justify-between pb-2'>
-              <CardTitle className='text-sm font-medium'>Total Users</CardTitle>
-              <Users className='h-4 w-4 text-green-600' />
-            </CardHeader>
-            <CardContent>
-              <div className='text-2xl font-bold'>{analytics.totalUsers}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className='flex flex-row items-center justify-between pb-2'>
-              <CardTitle className='text-sm font-medium'>
-                Active Subscriptions
-              </CardTitle>
-              <Package className='h-4 w-4 text-green-600' />
-            </CardHeader>
-            <CardContent>
-              <div className='text-2xl font-bold'>
-                {analytics.activeSubscriptions}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className='flex flex-row items-center justify-between pb-2'>
-              <CardTitle className='text-sm font-medium'>
-                Total Revenue
-              </CardTitle>
-              <DollarSign className='h-4 w-4 text-green-600' />
-            </CardHeader>
-            <CardContent>
-              <div className='text-2xl font-bold'>
-                ${analytics.totalRevenue}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className='flex flex-row items-center justify-between pb-2'>
-              <CardTitle className='text-sm font-medium'>
-                Completed Deliveries
-              </CardTitle>
-              <TrendingUp className='h-4 w-4 text-green-600' />
-            </CardHeader>
-            <CardContent>
-              <div className='text-2xl font-bold'>
-                {analytics.completedDeliveries}
-              </div>
-            </CardContent>
-          </Card>
+        <div className="grid md:grid-cols-4 gap-6">
+          <StatCard title="Total Users" value={analytics.totalUsers} icon={Users} />
+          <StatCard title="Active Subscriptions" value={analytics.activeSubscriptions} icon={Package} />
+          <StatCard title="Total Revenue" value={`₹${analytics.totalRevenue}`} icon={DollarSign} />
+          <StatCard title="Completed Deliveries" value={analytics.completedDeliveries} icon={TrendingUp} />
         </div>
 
-        {/* Tabs Section */}
-        <Tabs defaultValue='users' className='space-y-6'>
+        {/* Tabs */}
+        <Tabs defaultValue="users">
           <TabsList>
-            <TabsTrigger value='users'>Users</TabsTrigger>
-            <TabsTrigger value='subscriptions'>Subscriptions</TabsTrigger>
-            <TabsTrigger value='deliveries'>Deliveries</TabsTrigger>
-            <TabsTrigger value='analytics'>Analytics</TabsTrigger>
+            <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="subscriptions">Subscriptions</TabsTrigger>
+            <TabsTrigger value="deliveries">Deliveries</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
 
-          {/* Users */}
-          <TabsContent value='users'>
+          {/* 👥 Users Tab */}
+          <TabsContent value="users">
             <Card>
               <CardHeader>
                 <CardTitle>User Management</CardTitle>
-                <CardDescription>
-                  View and manage all registered users
-                </CardDescription>
+                <CardDescription>All registered FitFood users</CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -203,19 +263,15 @@ export default function AdminDashboard() {
                       <TableHead>Email</TableHead>
                       <TableHead>City</TableHead>
                       <TableHead>Phone</TableHead>
-                      <TableHead>Joined</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {users.map((u) => (
                       <TableRow key={u.id}>
-                        <TableCell className='font-medium'>{u.name}</TableCell>
+                        <TableCell>{u.name}</TableCell>
                         <TableCell>{u.email}</TableCell>
                         <TableCell>{u.city}</TableCell>
                         <TableCell>{u.phone}</TableCell>
-                        <TableCell>
-                          {new Date(u.createdAt).toLocaleDateString()}
-                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -224,12 +280,12 @@ export default function AdminDashboard() {
             </Card>
           </TabsContent>
 
-          {/* Subscriptions */}
-          <TabsContent value='subscriptions'>
+          {/* 📦 Subscriptions Tab */}
+          <TabsContent value="subscriptions">
             <Card>
               <CardHeader>
-                <CardTitle>Subscription Management</CardTitle>
-                <CardDescription>Manage all user subscriptions</CardDescription>
+                <CardTitle>Subscriptions</CardTitle>
+                <CardDescription>Manage user subscriptions</CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -245,55 +301,41 @@ export default function AdminDashboard() {
                   </TableHeader>
                   <TableBody>
                     {subscriptions.map((sub) => {
-                      const subUser = users.find((u) => u.id === sub.userId);
+                    const subUser = users.find((u) => u.id === sub.user_id);
+                    const planInfo = plans.find((p) => p.id === sub.plan);
+
+
+
                       return (
                         <TableRow key={sub.id}>
-                          <TableCell>
-                            {subUser ? subUser.name : "Unknown"}
-                          </TableCell>
-                          <TableCell>{sub.plan}</TableCell>
-                          <TableCell>{sub.timeSlot}</TableCell>
-                          <TableCell>${sub.price}</TableCell>
+                          <TableCell>{subUser?.name || subUser?.email || "Unknown"}</TableCell>
+
+                          <TableCell>{planInfo?.name || "Unknown Plan"}</TableCell>
+
+
+                          <TableCell>{sub.time_slot}</TableCell>
+                          <TableCell>₹{sub.price}</TableCell>
                           <TableCell>{getStatusBadge(sub.status)}</TableCell>
-                          <TableCell>
-                            <div className='flex gap-2'>
-                              {sub.status === "paused" && (
-                                <Button
-                                  size='sm'
-                                  variant='outline'
-                                  onClick={() =>
-                                    handleSubscriptionAction(sub.id, "active")
-                                  }
-                                >
-                                  Activate
-                                </Button>
-                              )}
-                              {sub.status === "active" && (
-                                <Button
-                                  size='sm'
-                                  variant='outline'
-                                  onClick={() =>
-                                    handleSubscriptionAction(sub.id, "paused")
-                                  }
-                                >
-                                  Pause
-                                </Button>
-                              )}
-                              {sub.status !== "cancelled" && (
-                                <Button
-                                  size='sm'
-                                  variant='destructive'
-                                  onClick={() =>
-                                    handleSubscriptionAction(
-                                      sub.id,
-                                      "cancelled"
-                                    )
-                                  }
-                                >
-                                  Cancel
-                                </Button>
-                              )}
-                            </div>
+                          <TableCell className="flex gap-2">
+                            {sub.status === "active" ? (
+                              <Button variant="outline" size="sm" onClick={() => handleSubscriptionAction(sub.id, "paused")}>
+                                Pause
+                              </Button>
+                            ) : sub.status === "paused" ? (
+                              <Button variant="outline" size="sm" onClick={() => handleSubscriptionAction(sub.id, "active")}>
+                                Resume
+                              </Button>
+                            ) : null}
+                            {sub.status !== "cancelled" && (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleSubscriptionAction(sub.id, "cancelled", sub.user_id)}
+                              >
+                                Cancel
+                              </Button>
+
+                            )}
                           </TableCell>
                         </TableRow>
                       );
@@ -304,14 +346,12 @@ export default function AdminDashboard() {
             </Card>
           </TabsContent>
 
-          {/* Deliveries */}
-          <TabsContent value='deliveries'>
+          {/* 🚚 Deliveries Tab */}
+          <TabsContent value="deliveries">
             <Card>
               <CardHeader>
-                <CardTitle>Delivery Schedule</CardTitle>
-                <CardDescription>
-                  View all scheduled and completed deliveries
-                </CardDescription>
+                <CardTitle>Deliveries</CardTitle>
+                <CardDescription>All scheduled and completed deliveries</CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -321,53 +361,50 @@ export default function AdminDashboard() {
                       <TableHead>Date</TableHead>
                       <TableHead>Time Slot</TableHead>
                       <TableHead>City</TableHead>
-                      <TableHead>Address</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {deliveries.slice(0, 20).map((delivery) => (
-                      <TableRow key={delivery.id}>
-                        <TableCell>{delivery.userName}</TableCell>
-                        <TableCell>
-                          {new Date(delivery.deliveryDate).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>{delivery.timeSlot}</TableCell>
-                        <TableCell>{delivery.city}</TableCell>
-                        <TableCell className='max-w-xs truncate'>
-                          {delivery.address}
-                        </TableCell>
-                        <TableCell>{getStatusBadge(delivery.status)}</TableCell>
-                      </TableRow>
-                    ))}
+                    {deliveries.slice(0, 30).map((d) => {
+                      const delUser = users.find((u) => u.id === d.user_id);
+                      return (
+                        <TableRow key={d.id}>
+                          <TableCell>{delUser?.name || "Unknown"}</TableCell>
+                          <TableCell>{new Date(d.delivery_date).toLocaleDateString()}</TableCell>
+                          <TableCell>{d.time_slot}</TableCell>
+                          <TableCell>{d.city}</TableCell>
+                          <TableCell>{getStatusBadge(d.status)}</TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* Analytics */}
-          <TabsContent value='analytics'>
+          {/* 📊 Analytics Tab */}
+          <TabsContent value="analytics">
             <Card>
               <CardHeader>
-                <CardTitle>City-wise Performance</CardTitle>
-                <CardDescription>Performance metrics by city</CardDescription>
+                <CardTitle>City Performance</CardTitle>
+                <CardDescription>Users & subscriptions by city</CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>City</TableHead>
-                      <TableHead>Total Users</TableHead>
+                      <TableHead>Users</TableHead>
                       <TableHead>Active Subscriptions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {analytics.cityStats.map((stat) => (
-                      <TableRow key={stat.city}>
-                        <TableCell>{stat.city}</TableCell>
-                        <TableCell>{stat.users}</TableCell>
-                        <TableCell>{stat.subscriptions}</TableCell>
+                    {analytics.cityStats.map((c) => (
+                      <TableRow key={c.city}>
+                        <TableCell>{c.city}</TableCell>
+                        <TableCell>{c.users}</TableCell>
+                        <TableCell>{c.subscriptions}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -378,5 +415,20 @@ export default function AdminDashboard() {
         </Tabs>
       </div>
     </div>
+  );
+}
+
+// ✅ Small subcomponent for stat cards
+function StatCard({ title, value, icon: Icon }) {
+  return (
+    <Card className="shadow-sm">
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        <Icon className="h-4 w-4 text-green-600" />
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">{value}</div>
+      </CardContent>
+    </Card>
   );
 }

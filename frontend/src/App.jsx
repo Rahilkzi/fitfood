@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import UserDashboard from "./pages/UserDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminPlans from "@/pages/AdminPlans";
 import DeliveryDashboard from "./pages/DeliveryDashboard";
 import NotFound from "./pages/NotFound";
 
@@ -23,6 +24,7 @@ function App() {
             <Route path='/login' element={<Login />} />
             <Route path='/dashboard' element={<UserDashboard />} />
             <Route path='/admin' element={<AdminDashboard />} />
+            <Route path="/admin/plans" element={<AdminPlans />} />
             <Route path='/delivery' element={<DeliveryDashboard />} />
             <Route path='*' element={<NotFound />} />
           </Routes>

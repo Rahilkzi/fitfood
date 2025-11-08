@@ -68,43 +68,44 @@ export const subscriptionPlans = [
   {
     id: "daily",
     name: "Daily Fresh",
-    description: "Fresh fruits delivered every day",
-    price: 99,
+    description: "Get hand-picked fresh fruits delivered every morning.",
+    price: 99, // per day
     deliveriesPerWeek: 7,
     features: [
-      "Daily delivery",
-      "Premium fruit selection",
-      "Flexible timing",
-      "Cancel anytime",
+      "Fresh fruits every day",
+      "Premium seasonal mix",
+      "Flexible delivery time",
+      "Pause or cancel anytime",
     ],
   },
   {
     id: "weekly",
     name: "Weekly Bundle",
-    description: "Fresh fruits 5 days a week",
-    price: 349,
+    description: "Perfect for busy weeks — 5 fresh fruit boxes, delivered Mon–Fri.",
+    price: 399, // per week
     deliveriesPerWeek: 5,
     features: [
-      "5 deliveries per week",
-      "Variety pack",
-      "Weekend off",
-      "Best value",
+      "5 weekday deliveries",
+      "Balanced fruit variety pack",
+      "No weekend delivery",
+      "Best value weekly plan",
     ],
   },
   {
     id: "monthly",
-    name: "Monthly Plan",
-    description: "Subscribe for a month and save",
-    price: 1299,
-    deliveriesPerWeek: 5,
+    name: "Monthly Saver",
+    description: "30-day subscription with savings and free doorstep delivery.",
+    price: 1399, // per month
+    deliveriesPerWeek: 7,
     features: [
-      "20+ deliveries",
-      "Maximum savings",
-      "Priority support",
-      "Free delivery",
+      "Up to 30 deliveries/month",
+      "Lowest cost per box",
+      "Free home delivery",
+      "Priority customer support",
     ],
   },
 ];
+
 
 // --- User Management ---
 
