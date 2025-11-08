@@ -1,11 +1,28 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
+import { Link } from "react-router-dom";
+import { PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/Card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { Badge } from "@/components/ui/Badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/Table";
+import AdminPlans from "./AdminPlans";
+
 import {
   Apple,
   Users,
@@ -33,8 +50,6 @@ export default function AdminDashboard() {
     completedDeliveries: 0,
     cityStats: [],
   });
-
-
 
   // 🟢 Check admin session
   useEffect(() => {
@@ -96,21 +111,23 @@ export default function AdminDashboard() {
     };
   }, [navigate]);
 
-
-
   // 🧠 Helper: Fetch subscription plans
-  const [plans, setPlans] = useState([]); 
-  
+  const [plans, setPlans] = useState([]);
+
   // 🧩 Load data from Supabase
   const loadData = async () => {
     try {
-      const [{ data: userData }, { data: subData }, { data: delData }, { data: planData }] = await Promise.all([
+      const [
+        { data: userData },
+        { data: subData },
+        { data: delData },
+        { data: planData },
+      ] = await Promise.all([
         supabase.from("users").select("*"),
         supabase.from("subscriptions").select("*"),
         supabase.from("deliveries").select("*"),
         supabase.from("plans").select("*"), // 👈 load plans too
       ]);
-
 
       setUsers(userData || []);
       setSubscriptions(subData || []);
@@ -119,13 +136,19 @@ export default function AdminDashboard() {
 
       // Analytics summary
       const totalUsers = (userData || []).length;
-      const activeSubs = (subData || []).filter((s) => s.status === "active").length;
+      const activeSubs = (subData || []).filter(
+        (s) => s.status === "active"
+      ).length;
       const totalRevenue = (subData || [])
         .filter((s) => s.status === "active")
         .reduce((sum, s) => sum + (s.price || 0), 0);
-      const completedDeliveries = (delData || []).filter((d) => d.status === "delivered").length;
+      const completedDeliveries = (delData || []).filter(
+        (d) => d.status === "delivered"
+      ).length;
 
-      const cities = [...new Set((userData || []).map((u) => u.city).filter(Boolean))];
+      const cities = [
+        ...new Set((userData || []).map((u) => u.city).filter(Boolean)),
+      ];
       const cityStats = cities.map((city) => ({
         city,
         users: userData.filter((u) => u.city === city).length,
@@ -149,6 +172,15 @@ export default function AdminDashboard() {
     }
   };
 
+  //plans
+  <Link
+    to='/admin/plans'
+    className='inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md shadow-sm transition'
+  >
+    <PlusCircle className='h-5 w-5' />
+    Manage Subscription Plans
+  </Link>;
+
   // 🧭 Logout
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -156,31 +188,31 @@ export default function AdminDashboard() {
   };
 
   // ⚙️ Update subscription status
-const handleSubscriptionAction = async (id, status, userId) => {
-  const { error: subError } = await supabase
-    .from("subscriptions")
-    .update({ status })
-    .eq("id", id);
+  const handleSubscriptionAction = async (id, status, userId) => {
+    const { error: subError } = await supabase
+      .from("subscriptions")
+      .update({ status })
+      .eq("id", id);
 
-  if (subError) {
-    alert("Failed to update subscription");
-    return;
-  }
+    if (subError) {
+      alert("Failed to update subscription");
+      return;
+    }
 
-  // If cancelled, delete future deliveries
-  if (status === "cancelled") {
-    const today = new Date().toISOString().split("T")[0];
-    const { error: delError } = await supabase
-      .from("deliveries")
-      .delete()
-      .eq("subscription_id", id)
-      .gte("delivery_date", today);
+    // If cancelled, delete future deliveries
+    if (status === "cancelled") {
+      const today = new Date().toISOString().split("T")[0];
+      const { error: delError } = await supabase
+        .from("deliveries")
+        .delete()
+        .eq("subscription_id", id)
+        .gte("delivery_date", today);
 
-    if (delError) console.error("Failed to delete deliveries:", delError);
-  }
+      if (delError) console.error("Failed to delete deliveries:", delError);
+    }
 
-  loadData();
-};
+    loadData();
+  };
 
   // 🎨 Badge helper
   const getStatusBadge = (status) => {
@@ -194,8 +226,8 @@ const handleSubscriptionAction = async (id, status, userId) => {
     const config = variants[status] || variants.pending;
     const Icon = config.icon;
     return (
-      <Badge variant={config.variant} className="capitalize">
-        <Icon className="h-3 w-3 mr-1" />
+      <Badge variant={config.variant} className='capitalize'>
+        <Icon className='h-3 w-3 mr-1' />
         {status}
       </Badge>
     );
@@ -203,53 +235,83 @@ const handleSubscriptionAction = async (id, status, userId) => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen text-green-700">
-        <Loader className="h-8 w-8 animate-spin mr-2" /> Loading admin dashboard...
+      <div className='flex justify-center items-center min-h-screen text-green-700'>
+        <Loader className='h-8 w-8 animate-spin mr-2' /> Loading admin
+        dashboard...
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
+    <div className='min-h-screen bg-gradient-to-br from-green-50 to-emerald-50'>
       {/* Header */}
-      <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Apple className="h-8 w-8 text-green-600" />
-            <span className="text-2xl font-bold text-green-600">FitFood Admin</span>
+      <header className='border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50'>
+        <div className='container mx-auto px-4 py-4 flex items-center justify-between'>
+          <div className='flex items-center gap-2'>
+            <Apple className='h-8 w-8 text-green-600' />
+            <span className='text-2xl font-bold text-green-600'>
+              FitFood Admin
+            </span>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-gray-700">
+          <div className='flex items-center gap-4'>
+            <span className='text-gray-700'>
               {user?.email?.split("@")[0]} (Admin)
             </span>
-            <Button variant="outline" size="sm" onClick={handleLogout}>
-              <LogOut className="h-4 w-4 mr-2" />
+            <Button variant='outline' size='sm' onClick={handleLogout}>
+              <LogOut className='h-4 w-4 mr-2' />
               Logout
             </Button>
           </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-8 space-y-8">
+      <div className='container mx-auto px-4 py-8 space-y-8'>
         {/* Stats */}
-        <div className="grid md:grid-cols-4 gap-6">
-          <StatCard title="Total Users" value={analytics.totalUsers} icon={Users} />
-          <StatCard title="Active Subscriptions" value={analytics.activeSubscriptions} icon={Package} />
-          <StatCard title="Total Revenue" value={`₹${analytics.totalRevenue}`} icon={DollarSign} />
-          <StatCard title="Completed Deliveries" value={analytics.completedDeliveries} icon={TrendingUp} />
+        <div className='grid md:grid-cols-4 gap-6'>
+          <StatCard
+            title='Total Users'
+            value={analytics.totalUsers}
+            icon={Users}
+          />
+          <StatCard
+            title='Active Subscriptions'
+            value={analytics.activeSubscriptions}
+            icon={Package}
+          />
+          <StatCard
+            title='Total Revenue'
+            value={`₹${analytics.totalRevenue}`}
+            icon={DollarSign}
+          />
+          <StatCard
+            title='Completed Deliveries'
+            value={analytics.completedDeliveries}
+            icon={TrendingUp}
+          />
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="users">
+        <Tabs defaultValue='users'>
           <TabsList>
-            <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="subscriptions">Subscriptions</TabsTrigger>
-            <TabsTrigger value="deliveries">Deliveries</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value='users'>Users</TabsTrigger>
+            <TabsTrigger value='subscriptions'>Subscriptions</TabsTrigger>
+            <TabsTrigger value='deliveries'>Deliveries</TabsTrigger>
+            <TabsTrigger value='analytics'>Analytics</TabsTrigger>
           </TabsList>
 
+          {/* Manage Plans Button */}
+          <div className='flex justify-end'>
+            <Link
+              to='/admin/plans'
+              className='inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md shadow-md transition'
+            >
+              <PlusCircle className='h-5 w-5' />
+              Manage Subscription Plans
+            </Link>
+          </div>
+
           {/* 👥 Users Tab */}
-          <TabsContent value="users">
+          <TabsContent value='users'>
             <Card>
               <CardHeader>
                 <CardTitle>User Management</CardTitle>
@@ -281,7 +343,7 @@ const handleSubscriptionAction = async (id, status, userId) => {
           </TabsContent>
 
           {/* 📦 Subscriptions Tab */}
-          <TabsContent value="subscriptions">
+          <TabsContent value='subscriptions'>
             <Card>
               <CardHeader>
                 <CardTitle>Subscriptions</CardTitle>
@@ -301,40 +363,58 @@ const handleSubscriptionAction = async (id, status, userId) => {
                   </TableHeader>
                   <TableBody>
                     {subscriptions.map((sub) => {
-                    const subUser = users.find((u) => u.id === sub.user_id);
-                    const planInfo = plans.find((p) => p.id === sub.plan);
-
-
+                      const subUser = users.find((u) => u.id === sub.user_id);
+                      const planInfo = plans.find((p) => p.id === sub.plan);
 
                       return (
                         <TableRow key={sub.id}>
-                          <TableCell>{subUser?.name || subUser?.email || "Unknown"}</TableCell>
+                          <TableCell>
+                            {subUser?.name || subUser?.email || "Unknown"}
+                          </TableCell>
 
-                          <TableCell>{planInfo?.name || "Unknown Plan"}</TableCell>
-
+                          <TableCell>
+                            {planInfo?.name || "Unknown Plan"}
+                          </TableCell>
 
                           <TableCell>{sub.time_slot}</TableCell>
                           <TableCell>₹{sub.price}</TableCell>
                           <TableCell>{getStatusBadge(sub.status)}</TableCell>
-                          <TableCell className="flex gap-2">
+                          <TableCell className='flex gap-2'>
                             {sub.status === "active" ? (
-                              <Button variant="outline" size="sm" onClick={() => handleSubscriptionAction(sub.id, "paused")}>
+                              <Button
+                                variant='outline'
+                                size='sm'
+                                onClick={() =>
+                                  handleSubscriptionAction(sub.id, "paused")
+                                }
+                              >
                                 Pause
                               </Button>
                             ) : sub.status === "paused" ? (
-                              <Button variant="outline" size="sm" onClick={() => handleSubscriptionAction(sub.id, "active")}>
+                              <Button
+                                variant='outline'
+                                size='sm'
+                                onClick={() =>
+                                  handleSubscriptionAction(sub.id, "active")
+                                }
+                              >
                                 Resume
                               </Button>
                             ) : null}
                             {sub.status !== "cancelled" && (
                               <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => handleSubscriptionAction(sub.id, "cancelled", sub.user_id)}
+                                variant='destructive'
+                                size='sm'
+                                onClick={() =>
+                                  handleSubscriptionAction(
+                                    sub.id,
+                                    "cancelled",
+                                    sub.user_id
+                                  )
+                                }
                               >
                                 Cancel
                               </Button>
-
                             )}
                           </TableCell>
                         </TableRow>
@@ -347,11 +427,13 @@ const handleSubscriptionAction = async (id, status, userId) => {
           </TabsContent>
 
           {/* 🚚 Deliveries Tab */}
-          <TabsContent value="deliveries">
+          <TabsContent value='deliveries'>
             <Card>
               <CardHeader>
                 <CardTitle>Deliveries</CardTitle>
-                <CardDescription>All scheduled and completed deliveries</CardDescription>
+                <CardDescription>
+                  All scheduled and completed deliveries
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -370,7 +452,9 @@ const handleSubscriptionAction = async (id, status, userId) => {
                       return (
                         <TableRow key={d.id}>
                           <TableCell>{delUser?.name || "Unknown"}</TableCell>
-                          <TableCell>{new Date(d.delivery_date).toLocaleDateString()}</TableCell>
+                          <TableCell>
+                            {new Date(d.delivery_date).toLocaleDateString()}
+                          </TableCell>
                           <TableCell>{d.time_slot}</TableCell>
                           <TableCell>{d.city}</TableCell>
                           <TableCell>{getStatusBadge(d.status)}</TableCell>
@@ -384,7 +468,7 @@ const handleSubscriptionAction = async (id, status, userId) => {
           </TabsContent>
 
           {/* 📊 Analytics Tab */}
-          <TabsContent value="analytics">
+          <TabsContent value='analytics'>
             <Card>
               <CardHeader>
                 <CardTitle>City Performance</CardTitle>
@@ -421,13 +505,13 @@ const handleSubscriptionAction = async (id, status, userId) => {
 // ✅ Small subcomponent for stat cards
 function StatCard({ title, value, icon: Icon }) {
   return (
-    <Card className="shadow-sm">
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <Icon className="h-4 w-4 text-green-600" />
+    <Card className='shadow-sm'>
+      <CardHeader className='flex flex-row items-center justify-between pb-2'>
+        <CardTitle className='text-sm font-medium'>{title}</CardTitle>
+        <Icon className='h-4 w-4 text-green-600' />
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
+        <div className='text-2xl font-bold'>{value}</div>
       </CardContent>
     </Card>
   );

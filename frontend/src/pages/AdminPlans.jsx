@@ -20,7 +20,10 @@ export default function AdminPlans() {
   });
 
   const fetchPlans = async () => {
-    const { data, error } = await supabase.from("plans").select("*").order("created_at", { ascending: true });
+    const { data, error } = await supabase
+      .from("plans")
+      .select("*")
+      .order("created_at", { ascending: true });
     if (!error) setPlans(data || []);
     setLoading(false);
   };
@@ -40,14 +43,24 @@ export default function AdminPlans() {
 
     let result;
     if (editingPlan) {
-      result = await supabase.from("plans").update(payload).eq("id", editingPlan.id);
+      result = await supabase
+        .from("plans")
+        .update(payload)
+        .eq("id", editingPlan.id);
     } else {
       result = await supabase.from("plans").insert([payload]);
     }
 
     if (result.error) alert("Error saving plan: " + result.error.message);
     else {
-      setFormData({ plan_code: "", name: "", description: "", price: "", deliveries_per_week: "", features: "" });
+      setFormData({
+        plan_code: "",
+        name: "",
+        description: "",
+        price: "",
+        deliveries_per_week: "",
+        features: "",
+      });
       setEditingPlan(null);
       fetchPlans();
     }
@@ -75,91 +88,137 @@ export default function AdminPlans() {
 
   if (loading)
     return (
-      <div className="flex justify-center items-center min-h-screen text-green-600">
-        <Loader className="h-6 w-6 animate-spin mr-2" /> Loading plans...
+      <div className='flex justify-center items-center min-h-screen text-green-600'>
+        <Loader className='h-6 w-6 animate-spin mr-2' /> Loading plans...
       </div>
     );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 p-6">
-      <div className="max-w-4xl mx-auto space-y-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>{editingPlan ? "Edit Plan" : "Add New Plan"}</CardTitle>
+    <div className='min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 py-10 px-6'>
+      <div className='max-w-5xl mx-auto space-y-10'>
+        {/* ➕ Add/Edit Plan */}
+        <Card className='shadow-md border border-green-200'>
+          <CardHeader className='pb-2'>
+            <CardTitle className='text-lg font-semibold flex items-center gap-2 text-green-700'>
+              <PlusCircle className='h-5 w-5' />
+              {editingPlan ? "Edit Plan" : "Add New Plan"}
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="grid gap-4">
+            <form onSubmit={handleSubmit} className='grid gap-4'>
               <Input
-                placeholder="Plan Code (e.g. daily)"
+                placeholder='Plan Code (e.g. daily)'
                 value={formData.plan_code}
-                onChange={(e) => setFormData({ ...formData, plan_code: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, plan_code: e.target.value })
+                }
                 required
               />
               <Input
-                placeholder="Name"
+                placeholder='Plan Name'
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
                 required
               />
               <Textarea
-                placeholder="Description"
+                placeholder='Description'
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
               />
-              <Input
-                type="number"
-                placeholder="Price (₹)"
-                value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                required
-              />
-              <Input
-                type="number"
-                placeholder="Deliveries per week"
-                value={formData.deliveries_per_week}
-                onChange={(e) => setFormData({ ...formData, deliveries_per_week: e.target.value })}
-              />
+              <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                <Input
+                  type='number'
+                  placeholder='Price (₹)'
+                  value={formData.price}
+                  onChange={(e) =>
+                    setFormData({ ...formData, price: e.target.value })
+                  }
+                  required
+                />
+                <Input
+                  type='number'
+                  placeholder='Deliveries per week'
+                  value={formData.deliveries_per_week}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      deliveries_per_week: e.target.value,
+                    })
+                  }
+                />
+              </div>
               <Textarea
-                placeholder="Features (comma separated)"
+                placeholder='Features (comma separated)'
                 value={formData.features}
-                onChange={(e) => setFormData({ ...formData, features: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, features: e.target.value })
+                }
               />
-              <Button type="submit" className="bg-green-600 hover:bg-green-700">
+              <Button
+                type='submit'
+                className='bg-green-600 hover:bg-green-700 text-white font-medium'
+              >
                 {editingPlan ? "Update Plan" : "Add Plan"}
               </Button>
             </form>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Existing Plans</CardTitle>
+        {/* 📋 Existing Plans */}
+        <Card className='shadow-md border border-green-200'>
+          <CardHeader className='pb-2'>
+            <CardTitle className='text-lg font-semibold text-green-700'>
+              Existing Plans
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className='grid md:grid-cols-2 gap-6'>
             {plans.length === 0 ? (
-              <p className="text-gray-600">No plans available yet.</p>
+              <p className='text-gray-600'>No plans available yet.</p>
             ) : (
               plans.map((plan) => (
                 <div
                   key={plan.id}
-                  className="flex justify-between items-center border p-3 rounded-lg bg-white/80"
+                  className='border border-green-100 rounded-xl bg-white p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between'
                 >
                   <div>
-                    <p className="font-semibold text-green-700">{plan.name}</p>
-                    <p className="text-sm text-gray-600">{plan.description}</p>
-                    <p className="text-sm text-gray-500">
+                    <h3 className='font-semibold text-green-700 text-lg mb-1'>
+                      {plan.name}
+                    </h3>
+                    <p className='text-sm text-gray-600'>
+                      {plan.description || "No description provided."}
+                    </p>
+                    <p className='text-sm text-gray-700 mt-2 font-medium'>
                       ₹{plan.price} • {plan.deliveries_per_week} days/week
                     </p>
-                    <p className="text-xs text-gray-400">
-                      Features: {plan.features.join(", ")}
+                    <p className='text-xs text-gray-500 mt-2'>
+                      <span className='font-medium text-gray-600'>
+                        Features:
+                      </span>{" "}
+                      {plan.features.join(", ")}
                     </p>
                   </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => handleEdit(plan)}>
-                      <Edit3 className="h-4 w-4 mr-1" /> Edit
+
+                  {/* 🔘 Action buttons below content */}
+                  <div className='mt-4 flex justify-between'>
+                    <Button
+                      variant='outline'
+                      size='sm'
+                      onClick={() => handleEdit(plan)}
+                      className='flex items-center gap-1 text-green-700 border-green-400 hover:bg-green-50'
+                    >
+                      <Edit3 className='h-4 w-4' /> Edit
                     </Button>
-                    <Button variant="destructive" size="sm" onClick={() => handleDelete(plan.id)}>
-                      <Trash2 className="h-4 w-4 mr-1" /> Delete
+                    <Button
+                      variant='destructive'
+                      size='sm'
+                      onClick={() => handleDelete(plan.id)}
+                      className='flex items-center gap-1'
+                    >
+                      <Trash2 className='h-4 w-4' /> Delete
                     </Button>
                   </div>
                 </div>

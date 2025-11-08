@@ -24,8 +24,9 @@ function App() {
             <Route path='/login' element={<Login />} />
             <Route path='/dashboard' element={<UserDashboard />} />
             <Route path='/admin' element={<AdminDashboard />} />
-            <Route path="/admin/plans" element={<AdminPlans />} />
+            <Route path='/admin/plans' element={<AdminPlans />} />
             <Route path='/delivery' element={<DeliveryDashboard />} />
+            <Route path='/admin/plans' element={<AdminPlans />} />
             <Route path='*' element={<NotFound />} />
           </Routes>
         </BrowserRouter>
