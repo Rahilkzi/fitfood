@@ -1,15 +1,27 @@
 import { useEffect, useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Textarea } from "@/components/ui/Textarea";
-import { Loader, Trash2, Edit3, PlusCircle } from "lucide-react";
+import {
+  Loader,
+  Trash2,
+  Edit3,
+  PlusCircle,
+  LogOut,
+  ArrowLeft,
+  Apple,
+} from "lucide-react";
 
 export default function AdminPlans() {
+  const navigate = useNavigate();
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingPlan, setEditingPlan] = useState(null);
+  const [user, setUser] = useState(null);
+
   const [formData, setFormData] = useState({
     plan_code: "",
     name: "",
@@ -19,6 +31,22 @@ export default function AdminPlans() {
     features: "",
   });
 
+  // ✅ Fetch user session and plans
+  useEffect(() => {
+    const checkSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        navigate("/login", { replace: true });
+        return;
+      }
+      setUser(session.user);
+    };
+    checkSession();
+    fetchPlans();
+  }, []);
+
   const fetchPlans = async () => {
     const { data, error } = await supabase
       .from("plans")
@@ -27,10 +55,6 @@ export default function AdminPlans() {
     if (!error) setPlans(data || []);
     setLoading(false);
   };
-
-  useEffect(() => {
-    fetchPlans();
-  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -86,6 +110,11 @@ export default function AdminPlans() {
     }
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/login", { replace: true });
+  };
+
   if (loading)
     return (
       <div className='flex justify-center items-center min-h-screen text-green-600'>
@@ -94,8 +123,39 @@ export default function AdminPlans() {
     );
 
   return (
-    <div className='min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 py-10 px-6'>
-      <div className='max-w-5xl mx-auto space-y-10'>
+    <div className='min-h-screen bg-gradient-to-br from-green-50 to-emerald-50'>
+      {/* ✅ Same Header as Admin Dashboard */}
+      <header className='border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50'>
+        <div className='container mx-auto px-4 py-4 flex items-center justify-between'>
+          <div className='flex items-center gap-2'>
+            <Apple className='h-8 w-8 text-green-600' />
+            <span className='text-2xl font-bold text-green-600'>
+              FitFood Admin
+            </span>
+          </div>
+          <div className='flex items-center gap-4'>
+            <span className='text-gray-700'>
+              {user?.email?.split("@")[0]} (Admin)
+            </span>
+            <Button variant='outline' size='sm' onClick={handleLogout}>
+              <LogOut className='h-4 w-4 mr-2' /> Logout
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* 🟢 Back Button */}
+      <div className='flex justify-center md:justify-start container mx-auto px-4 mt-6'>
+        <Link
+          to='/admin'
+          className='inline-flex items-center gap-2 px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md shadow-md transition-all'
+        >
+          <ArrowLeft className='h-5 w-5' /> Back to Dashboard
+        </Link>
+      </div>
+
+      {/* 🧩 Main Content */}
+      <div className='max-w-5xl mx-auto space-y-10 py-10 px-6'>
         {/* ➕ Add/Edit Plan */}
         <Card className='shadow-md border border-green-200'>
           <CardHeader className='pb-2'>
@@ -202,8 +262,8 @@ export default function AdminPlans() {
                     </p>
                   </div>
 
-                  {/* 🔘 Action buttons below content */}
-                  <div className='mt-4 flex justify-between'>
+                  {/* Centered Buttons */}
+                  <div className='mt-6 mb-2 flex justify-center gap-4'>
                     <Button
                       variant='outline'
                       size='sm'

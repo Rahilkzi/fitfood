@@ -172,15 +172,6 @@ export default function AdminDashboard() {
     }
   };
 
-  //plans
-  <Link
-    to='/admin/plans'
-    className='inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md shadow-sm transition'
-  >
-    <PlusCircle className='h-5 w-5' />
-    Manage Subscription Plans
-  </Link>;
-
   // 🧭 Logout
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -290,6 +281,17 @@ export default function AdminDashboard() {
           />
         </div>
 
+        {/* Manage Plans Button */}
+        <div className='flex justify-center my-4'>
+          <Link
+            to='/admin/plans'
+            className='inline-flex items-center gap-2 px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md shadow-md transition-all'
+          >
+            <PlusCircle className='h-5 w-5' />
+            Manage Subscription Plans
+          </Link>
+        </div>
+
         {/* Tabs */}
         <Tabs defaultValue='users'>
           <TabsList>
@@ -298,17 +300,6 @@ export default function AdminDashboard() {
             <TabsTrigger value='deliveries'>Deliveries</TabsTrigger>
             <TabsTrigger value='analytics'>Analytics</TabsTrigger>
           </TabsList>
-
-          {/* Manage Plans Button */}
-          <div className='flex justify-end'>
-            <Link
-              to='/admin/plans'
-              className='inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md shadow-md transition'
-            >
-              <PlusCircle className='h-5 w-5' />
-              Manage Subscription Plans
-            </Link>
-          </div>
 
           {/* 👥 Users Tab */}
           <TabsContent value='users'>
