@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Textarea } from "@/components/ui/Textarea";
 import { Loader, Trash2, Edit3, PlusCircle } from "lucide-react";
 
 export default function AdminPlans() {
